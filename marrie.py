@@ -1,26 +1,13 @@
 # -*- coding: utf-8 -*-
 
-"""marrie - A simple podcast client that runs on CLI
-
-Configuration:
-
-    Section podcast:
-        names and urls of the RSS feeds
-
-    Section config:
-        limit_rate: Limit rate of the doownload bandwidth (on KB/s)
-        media_dir: Directory to save the files
-
-Example of config file (~/.marrie):
-
-[podcast]
-na_geral = http://www.radiobandeirantes.com.br/rss/xmls/humor.xml
-phpspcast = http://feeds2.feedburner.com/phpspcast
-nerdcast = http://jovemnerd.ig.com.br/?feed=rss2&cat=42
-
-[config]
-limit_rate = 40
-media_dir = /home/rafael/podcast
+"""
+    marrie
+    ~~~~~~
+    
+    marrie is a simple podcast client that runs on the CLI (bash).
+    
+    :copyright: (c) 2010 by Rafael Goncalves Martins
+    :license: BSD, see LICENSE for more details.
 """
 
 __all__ = ['Config', 'Client', 'Marrie', 'main']
@@ -204,7 +191,7 @@ def main():
         help = 'list all the downloaded files available from podcast_id'
     )
     parser.add_option(
-        '--get',
+        '--get-latest',
         action = 'store_true',
         dest = 'get',
         default = False,
