@@ -22,7 +22,7 @@ Configuration
 
 * Section config:
 
-  - fetch_command: command used to download the podcast files, e.g. using curl,
+  - fetch_command: command used to download the podcast files, e.g. using aria2,
     wget, etc.
   - player_command: command used to play the podcast files, e.g using mplayer.
   - media_dir: directory path where the podcast files will be saved, in sub
