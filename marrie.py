@@ -39,7 +39,6 @@ config_file = '''\
 #
 # Examples:
 #   wget --limit-rate=30k -c -O %(file)s %(url)s
-#   aria2c -c -o %(file)s %(url)s
 fetch_command = wget --limit-rate=30k -c -O %(file)s %(url)s
 
 # Player command to play the files
@@ -232,9 +231,9 @@ def main():
         if len(args) != 1:
             parser.error('One argument is required!')
         podcast_id = args[0]
-        podget = Marrie(config, podcast_id)
+        marrie = Marrie(config, podcast_id)
         if options.list_files:
-            list_fetched = podget.list_fetched()
+            list_fetched = marrie.list_fetched()
             list_fetched.sort()
             print 'Available chapters for %s' % podcast_id
             print
@@ -243,19 +242,19 @@ def main():
             return 0
         client = Client(config)
         if options.get:
-            url, filepath = podget.latest_available()
+            url, filepath = marrie.latest_available()
             print 'Downloading: %s' % url
             print 'Saving to: %s' % filepath
             print
             client.fetch(url, filepath)
-            podget.set_latest(os.path.basename(filepath))
+            marrie.set_latest(os.path.basename(filepath))
             return 0
         if options.play is not None:
-            filepath = os.path.join(podget.media_dir, options.play)
+            filepath = os.path.join(marrie.media_dir, options.play)
         elif options.play_latest:
-            filepath = podget.get_latest()
+            filepath = marrie.get_latest()
         elif options.play_random:
-            list_fetched = podget.list_fetched()
+            list_fetched = marrie.list_fetched()
             filepath = random.choice(list_fetched)
         if not os.path.exists(filepath):
             parser.error('File not found - %s' % filepath)
