@@ -20,7 +20,7 @@ __url__ = 'http://rafaelmartins.eng.br/en-us/projects/marrie/'
 __copyright__ = '(c) 2010 %s <%s>' % (__author__, __email__)
 __license__ = 'BSD'
 
-__version__ = 'dev'
+__version__ = '0.2'
 
 import optparse
 import os
