@@ -5,7 +5,7 @@ import marrie
 import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(current_dir, 'README.rst')) as fp:
+with open(os.path.join(current_dir, 'README')) as fp:
     long_description = fp.read()
 
 setup(
