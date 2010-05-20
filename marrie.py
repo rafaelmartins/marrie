@@ -115,6 +115,8 @@ class Marrie:
     
     def __init__(self, config, id):
         self.podcast = config.podcast
+        if not id in self.podcast:
+            raise RuntimeError('Invalid podcast ID: %s' % id)
         self.id = id
         self.media_dir = os.path.join(config.media_dir, self.id)
         if not os.path.exists(self.media_dir):
