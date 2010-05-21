@@ -39,6 +39,7 @@ config_file = '''\
 #
 # Examples:
 #   wget --limit-rate=30k -c -O %(file)s %(url)s
+#   curl --limit-rate 30K -C - -o %(file)s %(url)s
 fetch_command = wget --limit-rate=30k -c -O %(file)s %(url)s
 
 # Player command to play the files
