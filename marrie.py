@@ -100,7 +100,7 @@ class Client:
             file = filepath + '.part'
         ), shell = True)
         if return_code != 0:
-            raise RuntimeException('Failed to save the file: %s' % filepath)
+            raise RuntimeError('Failed to save the file: %s' % filepath)
         shutil.move(filepath + '.part', filepath)
 
     def player(self, filepath):
@@ -108,7 +108,7 @@ class Client:
             file = filepath
         ), shell = True)
         if return_code != 0:
-            raise RuntimeException('Failed to play the file: %s' % filepath)
+            raise RuntimeError('Failed to play the file: %s' % filepath)
 
 
 class Marrie:
