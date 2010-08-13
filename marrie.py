@@ -30,6 +30,7 @@ import subprocess
 import sys
 import urllib2
 from ConfigParser import ConfigParser
+from contextlib import closing
 from xml.dom.minidom import parse as parseXML
 
 config_file = '''\
@@ -126,9 +127,8 @@ class Marrie:
     def list_chapters(self):
         url = self.podcast[self.id]
         try:
-            fp = urllib2.urlopen(url)
-            rss = parseXML(fp)
-            fp.close()
+            with closing(urllib2.urlopen(url)) as fp:
+                rss = parseXML(fp)
         except:
             raise RuntimeError('Failed to parse the RSS feed: %s' % url)
         enclosure = rss.getElementsByTagName('enclosure')
