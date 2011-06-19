@@ -6,7 +6,7 @@
 
     marrie is a simple podcast client that runs on the CLI (bash).
 
-    :copyright: (c) 2010 by Rafael Goncalves Martins
+    :copyright: (c) 2010-2011 by Rafael Goncalves Martins
     :license: BSD, see LICENSE for more details.
 """
 
