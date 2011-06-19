@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import urllib2
+from collections import OrderedDict
 from ConfigParser import ConfigParser
 from contextlib import closing
 from xml.dom.minidom import parse as parseXML
@@ -41,7 +42,7 @@ config_file = '''\
 # Examples:
 #   wget --limit-rate=30k -c -O %(file)s %(url)s
 #   curl --limit-rate 30K -C - -o %(file)s %(url)s
-fetch_command = wget --limit-rate=30k -c -O %(file)s %(url)s
+fetch_command = wget -c -O %(file)s %(url)s
 
 # Player command to play the files
 #
@@ -51,7 +52,7 @@ fetch_command = wget --limit-rate=30k -c -O %(file)s %(url)s
 player_command = mplayer %(file)s
 
 # Media directory to store the files
-media_dir = /multimedia/podcasts
+media_dir = ~/podcasts
 
 [podcast]
 
@@ -63,7 +64,8 @@ media_dir = /multimedia/podcasts
 class Config(object):
 
     _raw_options = ('fetch_command', 'player_command')
-    _options = ('media_dir', )
+    _options = ('media_dir',)
+    _expanduser = ('media_dir',)
 
     def __init__(self, my_file):
         my_file = os.path.expanduser(my_file)
@@ -74,20 +76,27 @@ class Config(object):
                 'Missing config file: %s. ' % my_file +
                 'The file will be created for you.'
             )
-        config = ConfigParser()
-        config.read(my_file)
+        self._cp = ConfigParser()
+        self._cp.read(my_file)
         for opt in (self._raw_options + self._options):
-            if not config.has_option('config', opt):
+            if not self._cp.has_option('config', opt):
                 raise RuntimeError(
                     'Missing needed config option: config:%s' % opt
                 )
-        for opt in self._raw_options:
-            setattr(self, opt, config.get('config', opt, True))
-        for opt in self._options:
-            setattr(self, opt, config.get('config', opt))
-        self.podcast = {}
-        for id, url in config.items('podcast'):
-            self.podcast[id] = url
+
+    def __getattr__(self, attr):
+        opt = None
+        if attr in self._raw_options:
+            opt = self._cp.get('config', attr, True)
+        elif attr in self._options:
+            opt = self._cp.get('config', attr)
+        elif attr == 'podcast':
+            opt = OrderedDict(self._cp.items('podcast'))
+        if opt is None:
+            raise AttributeError(attr)
+        if attr in self._expanduser and not isinstance(opt, dict):
+            return os.path.expanduser(opt)
+        return opt
 
 
 class Client:
