@@ -57,7 +57,7 @@ media_dir = ~/podcasts
 [podcast]
 
 # List of RSS feeds of your podcasts, in the format:
-#   podcast_id = http://url.to/the/rss/feed
+#   podcast_id = http://url.to/the/rss/feed.xml
 
 '''
 
