@@ -10,7 +10,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-__all__ = ['Config', 'Client', 'Marrie', 'main']
+__all__ = ['Config', 'Podcast', 'main']
 
 __author__ = 'Rafael Goncalves Martins'
 __email__ = 'rafael@rafaelmartins.eng.br'
@@ -22,8 +22,11 @@ __license__ = 'BSD'
 
 __version__ = '0.2.1+'
 
+import codecs
+import json
 import optparse
 import os
+import posixpath
 import random
 import shutil
 import subprocess
@@ -70,19 +73,16 @@ class Config(object):
     def __init__(self, my_file):
         my_file = os.path.expanduser(my_file)
         if not os.path.exists(my_file):
-            with open(my_file, 'w') as fp:
+            with codecs.open(my_file, 'w', encoding='utf-8') as fp:
                 fp.write(config_file)
             raise RuntimeError(
-                'Missing config file: %s. ' % my_file +
-                'The file will be created for you.'
-            )
+                'Missing config file: %s. Will be created for you.' % my_file)
         self._cp = ConfigParser()
         self._cp.read(my_file)
         for opt in (self._raw_options + self._options):
             if not self._cp.has_option('config', opt):
-                raise RuntimeError(
-                    'Missing needed config option: config:%s' % opt
-                )
+                raise RuntimeError('Missing needed config option: config:%s' \
+                                   % opt)
 
     def __getattr__(self, attr):
         opt = None
@@ -99,86 +99,122 @@ class Config(object):
         return opt
 
 
-class Client:
+class Podcast(object):
 
-    def __init__(self, config):
-        self.fetch_command = config.fetch_command
-        self.player_command = config.player_command
-
-    def fetch(self, url, filepath):
-        return_code = subprocess.call(self.fetch_command % dict(
-            url = url,
-            file = filepath + '.part'
-        ), shell = True)
-        if return_code != 0:
-            raise RuntimeError('Failed to save the file: %s' % filepath)
-        shutil.move(filepath + '.part', filepath)
-
-    def player(self, filepath):
-        return_code = subprocess.call(self.player_command % dict(
-            file = filepath
-        ), shell = True)
-        if return_code != 0:
-            raise RuntimeError('Failed to play the file: %s' % filepath)
-
-
-class Marrie:
-
-    def __init__(self, config, id):
-        self.podcast = config.podcast
-        if not id in self.podcast:
+    def __init__(self, config, pid):
+        self.config = config
+        if pid not in self.config.podcast:
             raise RuntimeError('Invalid podcast ID: %s' % id)
-        self.id = id
-        self.media_dir = os.path.join(config.media_dir, self.id)
+        self.pid = pid
+        self.media_dir = os.path.join(self.config.media_dir, self.pid)
         if not os.path.exists(self.media_dir):
             os.makedirs(self.media_dir)
+        self._cache_file = os.path.join(self.media_dir, '.cache')
+        self._latest_file = os.path.join(self.media_dir, '.latest')
 
-    def list_chapters(self):
-        url = self.podcast[self.id]
+    def _downloader(self, url, filepath):
+        part_file = filepath + '.part'
+        rv = subprocess.call(self.config.fetch_command % \
+                             dict(url=url, file=part_file), shell=True)
+        if rv != os.EX_OK:
+            raise RuntimeError('Failed to download the file (%s): %i' % \
+                               (url, rv))
         try:
-            with closing(urllib2.urlopen(url)) as fp:
+            shutil.move(part_file, filepath)
+        except Exception, err:
+            raise RuntimeError('Failed to save the file (%s): %s' % \
+                               (filepath, str(err)))
+
+    def _player(self, filepath):
+        rv = subprocess.call(self.config.player_command % dict(file=filepath),
+                             shell=True)
+        if rv != os.EX_OK:
+            raise RuntimeError('Failed to play the file (%s): %i' % \
+                               (filepath, rv))
+
+    def sync(self):
+        self._convert_oldstyle_latest()
+        purl = self.config.podcast[self.pid]
+        try:
+            with closing(urllib2.urlopen(purl)) as fp:
                 rss = parseXML(fp)
-        except:
-            raise RuntimeError('Failed to parse the RSS feed: %s' % url)
+        except Exception, err:
+            raise RuntimeError('Failed to parse the feed (%s): %s' % \
+                               (url, str(err)))
         enclosure = rss.getElementsByTagName('enclosure')
         chapters = []
         for chapter in enclosure:
             if chapter.getAttribute('type').startswith('audio/'):
                 url = chapter.getAttribute('url')
-                chapters.append((
-                    url.strip(),
-                    os.path.join(self.media_dir, url.split('/')[-1])
-                ))
-        return chapters
+                chapters.append(url.strip())
+        try:
+            with codecs.open(self._cache_file, 'w', encoding='utf-8') as fp:
+                json.dump(chapters, fp)
+        except Exception, err:
+            raise RuntimeError('Failed to save cache (%s): %s' % \
+                               (self._cache_file, str(err)))
+
+    def _load_cache(self):
+        try:
+            with codecs.open(self._cache_file, encoding='utf-8') as fp:
+                return json.load(fp)
+        except Exception, err:
+            raise RuntimeError('Failed to load cache (%s): %s' % \
+                               (self._cache_file, str(err)))
+
+    def _convert_oldstyle_latest(self):
+        old_latest = os.path.join(self.media_dir, 'LATEST')
+        if os.path.exists(old_latest):
+            try:
+                with codecs.open(old_latest, encoding='utf-8') as fp:
+                    os.symlink(fp.read().strip(), self._latest_file)
+            except Exception, err:
+                raise RuntimeError('Failed to convert old-style LATEST file ' \
+                                   'to symlink: %s' % str(err))
+            else:
+                os.unlink(old_latest)
+
+    def list_chapters(self):
+        if os.path.exists(self._cache_file):
+            return self._load_cache()
+        else:
+            raise RuntimeError('Cache not found, please run this script ' \
+                               'with `--sync` option before try to list ' \
+                               'chapters.')
 
     def latest_available(self):
         chapters = self.list_chapters()
-        url, filepath = chapters[0]
+        if len(chapters) == 0:
+            raise RuntimeError('No chapters available.')
+        filepath = posixpath.basename(chapters[0])
         if os.path.exists(filepath):
             raise RuntimeError('No newer podcast available.')
-        return url, filepath
+        return chapters[0], os.path.join(self.media_dir, filepath)
 
     def get_latest(self):
-        latest_file = os.path.join(self.media_dir, 'LATEST')
+        if not os.path.exists(self._latest_file):
+            raise RuntimeError('No podcast file registered as latest.')
+        latest_file = os.path.realpath(self._latest_file)
         if not os.path.exists(latest_file):
-            raise RuntimeError('No chapter available to play.')
-        with open(latest_file) as fp:
-            latest = fp.read().strip()
-        return os.path.join(self.media_dir, latest)
+            raise RuntimeError('Broken symlink: %s -> %s' % (self._latest_file,
+                                                             latest_file))
+        return latest_file
 
     def set_latest(self, filename):
-        with open(os.path.join(self.media_dir, 'LATEST'), 'w') as fp:
-            fp.write(filename)
+        try:
+            os.symlink(os.path.basename(filename), self._latest_file)
+        except Exception, err:
+            raise RuntimeError('Failed to create the .latest symlink: %s' % \
+                               str(err))
 
     def list_fetched(self):
         chapters = os.listdir(self.media_dir)
         if len(chapters) == 0:
             raise RuntimeError('No chapter available!')
-        f_chapters = []
         for chapter in chapters:
-            if chapter != 'LATEST' and not chapter.endswith('.part'):
-                f_chapters.append(os.path.join(self.media_dir, chapter))
-        return f_chapters
+            if chapter not in ('.cache', '.latest') and \
+               not chapter.endswith('.part'):
+                yield os.path.join(self.media_dir, chapter)
 
 
 def main():
@@ -231,6 +267,13 @@ def main():
         default = False,
         help = 'play a random chapter from podcast_id'
     )
+    parser.add_option(
+        '--sync',
+        action = 'store_true',
+        dest = 'sync',
+        default = False,
+        help = 'synchronize podcast feeds'
+    )
     options, args = parser.parse_args()
     try:
         config = Config('~/.marrie')
@@ -243,36 +286,38 @@ def main():
         if len(args) != 1:
             parser.error('One argument is required!')
         podcast_id = args[0]
-        marrie = Marrie(config, podcast_id)
+        podcast = Podcast(config, podcast_id)
+        if options.sync:
+            print 'Synchronizing feed for %s' % podcast_id
+            podcast.sync()
+            return 0
         if options.list_files:
-            list_fetched = marrie.list_fetched()
-            list_fetched.sort()
             print 'Available chapters for %s' % podcast_id
             print
-            for filepath in list_fetched:
+            for filepath in podcast.list_fetched():
                 print '    %s' % os.path.basename(filepath)
             return 0
-        client = Client(config)
         if options.get:
-            url, filepath = marrie.latest_available()
+            rv = podcast.latest_available()
+            if rv is not None:
+                url, filepath = rv
             print 'Downloading: %s' % url
             print 'Saving to: %s' % filepath
             print
-            client.fetch(url, filepath)
-            marrie.set_latest(os.path.basename(filepath))
+            podcast._downloader(url, filepath)
+            podcast.set_latest(os.path.basename(filepath))
             return 0
         if options.play is not None:
-            filepath = os.path.join(marrie.media_dir, options.play)
+            filepath = os.path.join(podcast.media_dir, options.play)
         elif options.play_latest:
-            filepath = marrie.get_latest()
+            filepath = podcast.get_latest()
         elif options.play_random:
-            list_fetched = marrie.list_fetched()
-            filepath = random.choice(list_fetched)
+            filepath = random.choice(podcast.list_fetched())
         if not os.path.exists(filepath):
             parser.error('File not found - %s' % filepath)
         print 'Playing: %s' % filepath
         print
-        client.player(filepath)
+        podcast._player(filepath)
         return 0
     except KeyboardInterrupt:
         print >> sys.stderr, 'Interrupted'
