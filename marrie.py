@@ -3,9 +3,9 @@
 """
     marrie
     ~~~~~~
-    
+
     marrie is a simple podcast client that runs on the CLI (bash).
-    
+
     :copyright: (c) 2010 by Rafael Goncalves Martins
     :license: BSD, see LICENSE for more details.
 """
@@ -20,7 +20,7 @@ __url__ = 'http://rafaelmartins.eng.br/en-us/projects/marrie/'
 __copyright__ = '(c) 2010 %s <%s>' % (__author__, __email__)
 __license__ = 'BSD'
 
-__version__ = '0.2'
+__version__ = '0.2.1+'
 
 import optparse
 import os
@@ -61,10 +61,10 @@ media_dir = /multimedia/podcasts
 '''
 
 class Config(object):
-    
+
     _raw_options = ('fetch_command', 'player_command')
     _options = ('media_dir', )
-    
+
     def __init__(self, my_file):
         my_file = os.path.expanduser(my_file)
         if not os.path.exists(my_file):
@@ -91,11 +91,11 @@ class Config(object):
 
 
 class Client:
-    
+
     def __init__(self, config):
         self.fetch_command = config.fetch_command
         self.player_command = config.player_command
-    
+
     def fetch(self, url, filepath):
         return_code = subprocess.call(self.fetch_command % dict(
             url = url,
@@ -114,7 +114,7 @@ class Client:
 
 
 class Marrie:
-    
+
     def __init__(self, config, id):
         self.podcast = config.podcast
         if not id in self.podcast:
@@ -141,7 +141,7 @@ class Marrie:
                     os.path.join(self.media_dir, url.split('/')[-1])
                 ))
         return chapters
-    
+
     def latest_available(self):
         chapters = self.list_chapters()
         url, filepath = chapters[0]
