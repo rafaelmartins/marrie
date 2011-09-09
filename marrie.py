@@ -113,7 +113,7 @@ class Podcast(object):
         self._cache_file = os.path.join(self.media_dir, '.cache')
         self._latest_file = os.path.join(self.media_dir, '.latest')
 
-    def fetch(self, url):
+    def _fetch(self, url):
         filepath = os.path.join(self.media_dir, posixpath.basename(url))
         part_file = filepath + '.part'
         rv = subprocess.call(self.config.fetch_command % \
@@ -129,7 +129,7 @@ class Podcast(object):
         else:
             self.podcast.set_latest(filepath)
 
-    def play(self, filename):
+    def _play(self, filename):
         filepath = os.path.join(self.media_dir, os.path.basename(filename))
         rv = subprocess.call(self.config.player_command % dict(file=filepath),
                              shell=True)
@@ -184,6 +184,16 @@ class Podcast(object):
             return self._load_cache()
         return []
 
+    def fetch(self, chapter_id):
+        chapters = self.list_chapters()
+        chapter_id = chapter_id - 1
+        try:
+            chapter = chapters[chapter_id]
+        except IndexError:
+            raise RuntimeError('Invalid chapter identifier.')
+        else:
+            self._fetch(chapter)
+
     def fetch_latest(self):
         chapters = self.list_chapters()
         if len(chapters) == 0:
@@ -191,10 +201,20 @@ class Podcast(object):
         if os.path.exists(os.path.join(self.media_dir,
                                        posixpath.basename(chapters[0]))):
             raise RuntimeError('No newer podcast available.')
-        self.fetch(chapters[0])
+        self._fetch(chapters[0])
+
+    def play(self, chapter_id):
+        chapters = list(self.list_fetched_chapters())
+        chapter_id = chapter_id - 1
+        try:
+            chapter = chapters[chapter_id]
+        except IndexError:
+            raise RuntimeError('Invalid chapter identifier.')
+        else:
+            self._play(chapter)
 
     def play_latest(self):
-        self.play(self.get_latest())
+        self._play(self.get_latest())
 
     def play_random(self):
         chapters = list(self.list_fetched_chapters())
@@ -230,14 +250,19 @@ class Podcast(object):
 
 class Cli(object):
 
-    _required_id = ('get_latest', 'play_latest', 'play_random')
+    _required_pid = ('get', 'play', 'play_random')
 
     def __init__(self):
         self.parser = argparse.ArgumentParser(description=__description__)
         self.parser.add_argument('podcast_id', nargs='?', metavar='PODCAST_ID',
                                  help='podcast identifier, from the '
                                  'configuration file')
-        self.parser.add_argument('-c', '--config-file', metavar='FILE',
+        self.parser.add_argument('chapter_id', nargs='?', metavar='CHAPTER_ID',
+                                 help='chapter identifier, local for '
+                                 '`--play\', remote for `--get\'. This '
+                                 'identifier is variable and is available on '
+                                 '`--list\'', type=int)
+        self.parser.add_argument('--config-file', metavar='FILE',
                                  dest='config_file', help='configuration file '
                                  'to be used. It will override the default '
                                  'file `~/.marrie\'')
@@ -251,15 +276,17 @@ class Cli(object):
                                 dest='callback', const=self.cmd_list,
                                 help='list all the feeds available or all the '
                                 'chapters available for a given PODCAST_ID')
-        self.group.add_argument('--get-latest', action='store_const',
-                                dest='callback', const=self.cmd_get_latest,
+        self.group.add_argument('-g', '--get', action='store_const',
+                                dest='callback', const=self.cmd_get,
                                 help='fetch the latest chapter available for '
-                                'a given PODCAST_ID')
-        self.group.add_argument('--play-latest', action='store_const',
-                                dest='callback', const=self.cmd_play_latest,
+                                'a given PODCAST_ID, if no CHAPTER_ID is '
+                                'provided')
+        self.group.add_argument('-p', '--play', action='store_const',
+                                dest='callback', const=self.cmd_play,
                                 help='play the latest chapter fetched for '
-                                'a given PODCAST_ID')
-        self.group.add_argument('--play-random', action='store_const',
+                                'a given PODCAST_ID, if no CHAPTER_ID is '
+                                'provided')
+        self.group.add_argument('-r', '--play-random', action='store_const',
                                 dest='callback', const=self.cmd_play_random,
                                 help='play a random chapter from the fetched '
                                 'for a given PODCAST_ID')
@@ -271,7 +298,7 @@ class Cli(object):
         if callback is None:
             self.parser.print_help()
             return os.EX_USAGE
-        if callback.__name__.lstrip('cmd_') in self._required_id:
+        if callback.__name__.lstrip('cmd_') in self._required_pid:
             if self.args.podcast_id is None:
                 self.parser.error('one argument is required.')
         if self.args.podcast_id is not None:
@@ -292,14 +319,14 @@ class Cli(object):
 
     def cmd_list(self):
         if self.args.podcast_id is None:
-            print 'Available feeds:'
+            print 'Podcast feeds available:'
             print
             for pid in self.config.podcast:
                 print '    %s - %s' % (pid, self.config.podcast[pid])
             print
             return os.EX_OK
         else:
-            print 'Available fetched files for "%s" (sorted by name):' \
+            print 'Fetched files available for "%s" (sorted by name):' \
                   % self.args.podcast_id
             print
             count = 1
@@ -309,7 +336,7 @@ class Cli(object):
             if count == 1:
                 print '    **** No fetched files.'
             print
-            print 'Available remote files for "%s" (reverse sorted by date):' \
+            print 'Remote files available for "%s" (reverse sorted by date):' \
                   % self.args.podcast_id
             print
             count = 1
@@ -321,17 +348,29 @@ class Cli(object):
                       'with `--sync\''
             print
 
-    def cmd_get_latest(self):
-        print 'Fetching the latest chapter available for "%s"' % \
-              self.args.podcast_id
+    def cmd_get(self):
+        if self.args.chapter_id is None:
+            print 'Fetching the latest chapter available for "%s"' % \
+                  self.args.podcast_id
+            print
+            self.podcast.fetch_latest()
+            return os.EX_OK
+        print 'Fetching chapter "%i" for "%s"' % (self.args.chapter_id,
+                                                  self.args.podcast_id)
         print
-        self.podcast.fetch_latest()
+        self.podcast.fetch(self.args.chapter_id)
 
-    def cmd_play_latest(self):
-        print 'Playing the latest chapter fetched for "%s"' % \
-              self.args.podcast_id
+    def cmd_play(self):
+        if self.args.chapter_id is None:
+            print 'Playing the latest chapter fetched for "%s"' % \
+                  self.args.podcast_id
+            print
+            self.podcast.play_latest()
+            return os.EX_OK
+        print 'Playing chapter "%i" for "%s"' % (self.args.chapter_id,
+                                                 self.args.podcast_id)
         print
-        self.podcast.play_latest()
+        self.podcast.play(self.args.chapter_id)
 
     def cmd_play_random(self):
         print 'Playing a random chapter available for "%s"' % \
@@ -346,7 +385,7 @@ def main():
         return cli.run()
     except KeyboardInterrupt:
         print >> sys.stderr, 'Interrupted'
-        return 1
+        return -1
     except RuntimeError, err:
         cli.parser.error('%s' % err)
     except Exception, err:
