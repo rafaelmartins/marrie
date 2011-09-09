@@ -64,6 +64,7 @@ media_dir = ~/podcasts
 
 '''
 
+
 class Config(object):
 
     _raw_options = ('fetch_command', 'player_command')
@@ -140,7 +141,7 @@ class Podcast(object):
                 rss = parseXML(fp)
         except Exception, err:
             raise RuntimeError('Failed to parse the feed (%s): %s' % \
-                               (url, str(err)))
+                               (purl, str(err)))
         enclosure = rss.getElementsByTagName('enclosure')
         chapters = []
         for chapter in enclosure:
