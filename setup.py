@@ -10,15 +10,22 @@ with open(os.path.join(current_dir, 'README')) as fp:
 
 setup(
     name='marrie',
-    version = marrie.__version__,
-    license = marrie.__license__,
-    description = marrie.__description__,
-    long_description = long_description,
-    author = marrie.__author__,
-    author_email = marrie.__email__,
-    url = marrie.__url__,
-    py_modules = ['marrie'],
-    entry_points = {
-        'console_scripts': ['marrie = marrie:main']
-    },
+    version=marrie.__version__,
+    license=marrie.__license__,
+    description=marrie.__description__,
+    long_description=long_description,
+    author=marrie.__author__,
+    author_email=marrie.__email__,
+    url=marrie.__url__,
+    py_modules=['marrie'],
+    install_requires=['argparse'],
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Console',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 2',
+        'Topic :: Multimedia :: Sound/Audio',
+    ],
+    entry_points={'console_scripts': ['marrie = marrie:main']},
 )
