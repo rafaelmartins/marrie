@@ -10,7 +10,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-__all__ = ['Config', 'Podcast', 'main']
+__all__ = ['Config', 'Podcast', 'Cli', 'main']
 
 __author__ = 'Rafael Goncalves Martins'
 __email__ = 'rafael@rafaelmartins.eng.br'
@@ -22,9 +22,9 @@ __license__ = 'BSD'
 
 __version__ = '0.2.1+'
 
+import argparse
 import codecs
 import json
-import optparse
 import os
 import posixpath
 import random
@@ -105,7 +105,7 @@ class Podcast(object):
     def __init__(self, config, pid):
         self.config = config
         if pid not in self.config.podcast:
-            raise RuntimeError('Invalid podcast ID: %s' % id)
+            raise RuntimeError('Invalid podcast ID: %s' % pid)
         self.pid = pid
         self.media_dir = os.path.join(self.config.media_dir, self.pid)
         if not os.path.exists(self.media_dir):
@@ -113,7 +113,8 @@ class Podcast(object):
         self._cache_file = os.path.join(self.media_dir, '.cache')
         self._latest_file = os.path.join(self.media_dir, '.latest')
 
-    def _downloader(self, url, filepath):
+    def fetch(self, url):
+        filepath = os.path.join(self.media_dir, posixpath.basename(url))
         part_file = filepath + '.part'
         rv = subprocess.call(self.config.fetch_command % \
                              dict(url=url, file=part_file), shell=True)
@@ -125,8 +126,11 @@ class Podcast(object):
         except Exception, err:
             raise RuntimeError('Failed to save the file (%s): %s' % \
                                (filepath, str(err)))
+        else:
+            self.podcast.set_latest(filepath)
 
-    def _player(self, filepath):
+    def play(self, filename):
+        filepath = os.path.join(self.media_dir, os.path.basename(filename))
         rv = subprocess.call(self.config.player_command % dict(file=filepath),
                              shell=True)
         if rv != os.EX_OK:
@@ -178,19 +182,25 @@ class Podcast(object):
     def list_chapters(self):
         if os.path.exists(self._cache_file):
             return self._load_cache()
-        else:
-            raise RuntimeError('Cache not found, please run this script ' \
-                               'with `--sync` option before try to list ' \
-                               'chapters.')
+        return []
 
-    def latest_available(self):
+    def fetch_latest(self):
         chapters = self.list_chapters()
         if len(chapters) == 0:
             raise RuntimeError('No chapters available.')
-        filepath = posixpath.basename(chapters[0])
-        if os.path.exists(filepath):
+        if os.path.exists(os.path.join(self.media_dir,
+                                       posixpath.basename(chapters[0]))):
             raise RuntimeError('No newer podcast available.')
-        return chapters[0], os.path.join(self.media_dir, filepath)
+        self.fetch(chapters[0])
+
+    def play_latest(self):
+        self.play(self.get_latest())
+
+    def play_random(self):
+        chapters = list(self.list_fetched_chapters())
+        if not len(chapters):
+            raise RuntimeError('No chapters available.')
+        self.play(random.choice(chapters))
 
     def get_latest(self):
         if not os.path.exists(self._latest_file):
@@ -201,14 +211,14 @@ class Podcast(object):
                                                              latest_file))
         return latest_file
 
-    def set_latest(self, filename):
+    def set_latest(self, url):
         try:
-            os.symlink(os.path.basename(filename), self._latest_file)
+            os.symlink(posixpath.basename(url), self._latest_file)
         except Exception, err:
             raise RuntimeError('Failed to create the .latest symlink: %s' % \
                                str(err))
 
-    def list_fetched(self):
+    def list_fetched_chapters(self):
         chapters = os.listdir(self.media_dir)
         if len(chapters) == 0:
             raise RuntimeError('No chapter available!')
@@ -218,118 +228,129 @@ class Podcast(object):
                 yield os.path.join(self.media_dir, chapter)
 
 
-def main():
-    parser = optparse.OptionParser(
-        usage = '%prog [options] <podcast_id>',
-        version = '%prog ' + __version__,
-        description = __description__
-    )
-    parser.add_option(
-        '--list',
-        action = 'store_true',
-        dest = 'list',
-        default = False,
-        help = 'list all the feeds available'
-    )
-    parser.add_option(
-        '--list-files',
-        action = 'store_true',
-        dest = 'list_files',
-        default = False,
-        help = 'list all the downloaded files available from podcast_id'
-    )
-    parser.add_option(
-        '--get-latest',
-        action = 'store_true',
-        dest = 'get',
-        default = False,
-        help = 'fetch the latest chapter availeble from podcast_id'
-    )
-    parser.add_option(
-        '--play',
-        action = 'store',
-        type = 'string',
-        metavar = 'FILE',
-        dest = 'play',
-        default = None,
-        help = 'play a given chapter from podcast_id'
-    )
-    parser.add_option(
-        '--play-latest',
-        action = 'store_true',
-        dest = 'play_latest',
-        default = False,
-        help = 'play a the latest chapter from podcast_id'
-    )
-    parser.add_option(
-        '--play-random',
-        action = 'store_true',
-        dest = 'play_random',
-        default = False,
-        help = 'play a random chapter from podcast_id'
-    )
-    parser.add_option(
-        '--sync',
-        action = 'store_true',
-        dest = 'sync',
-        default = False,
-        help = 'synchronize podcast feeds'
-    )
-    options, args = parser.parse_args()
-    try:
-        config = Config('~/.marrie')
-        if options.list:
+class Cli(object):
+
+    _required_id = ('get_latest', 'play_latest', 'play_random')
+
+    def __init__(self):
+        self.parser = argparse.ArgumentParser(description=__description__)
+        self.parser.add_argument('podcast_id', nargs='?', metavar='PODCAST_ID',
+                                 help='podcast identifier, from the '
+                                 'configuration file')
+        self.parser.add_argument('-c', '--config-file', metavar='FILE',
+                                 dest='config_file', help='configuration file '
+                                 'to be used. It will override the default '
+                                 'file `~/.marrie\'')
+        self.group = self.parser.add_mutually_exclusive_group()
+        self.group.add_argument('-s', '--sync', action='store_const',
+                                dest='callback', const=self.cmd_sync,
+                                help='syncronize the local cache of podcast '
+                                'chapters available for download, for a given '
+                                'PODCAST_ID, or for all available feeds')
+        self.group.add_argument('-l', '--list', action='store_const',
+                                dest='callback', const=self.cmd_list,
+                                help='list all the feeds available or all the '
+                                'chapters available for a given PODCAST_ID')
+        self.group.add_argument('--get-latest', action='store_const',
+                                dest='callback', const=self.cmd_get_latest,
+                                help='fetch the latest chapter available for '
+                                'a given PODCAST_ID')
+        self.group.add_argument('--play-latest', action='store_const',
+                                dest='callback', const=self.cmd_play_latest,
+                                help='play the latest chapter fetched for '
+                                'a given PODCAST_ID')
+        self.group.add_argument('--play-random', action='store_const',
+                                dest='callback', const=self.cmd_play_random,
+                                help='play a random chapter from the fetched '
+                                'for a given PODCAST_ID')
+
+    def run(self):
+        self.args = self.parser.parse_args()
+        self.config = Config(self.args.config_file or '~/.marrie')
+        callback = self.args.callback
+        if callback is None:
+            self.parser.print_help()
+            return os.EX_USAGE
+        if callback.__name__.lstrip('cmd_') in self._required_id:
+            if self.args.podcast_id is None:
+                self.parser.error('one argument is required.')
+        if self.args.podcast_id is not None:
+            self.podcast = Podcast(self.config, self.args.podcast_id)
+        return callback()
+
+    ### Commands ###
+
+    def cmd_sync(self):
+        if self.args.podcast_id is not None:
+            print 'Syncronizing feed "%s".' % self.args.podcast_id
+            self.podcast.sync()
+            return os.EX_OK
+        for pid in self.config.podcast:
+            print 'Syncronizing feed "%s".' % pid
+            podcast = Podcast(self.config, pid)
+            podcast.sync()
+
+    def cmd_list(self):
+        if self.args.podcast_id is None:
             print 'Available feeds:'
             print
-            for id in config.podcast:
-                print '    %s - %s' % (id, config.podcast[id])
-            return 0
-        if len(args) != 1:
-            parser.error('One argument is required!')
-        podcast_id = args[0]
-        podcast = Podcast(config, podcast_id)
-        if options.sync:
-            print 'Synchronizing feed for %s' % podcast_id
-            podcast.sync()
-            return 0
-        if options.list_files:
-            print 'Available chapters for %s' % podcast_id
+            for pid in self.config.podcast:
+                print '    %s - %s' % (pid, self.config.podcast[pid])
             print
-            for filepath in podcast.list_fetched():
-                print '    %s' % os.path.basename(filepath)
-            return 0
-        if options.get:
-            rv = podcast.latest_available()
-            if rv is not None:
-                url, filepath = rv
-            print 'Downloading: %s' % url
-            print 'Saving to: %s' % filepath
+            return os.EX_OK
+        else:
+            print 'Available fetched files for "%s" (sorted by name):' \
+                  % self.args.podcast_id
             print
-            podcast._downloader(url, filepath)
-            podcast.set_latest(os.path.basename(filepath))
-            return 0
-        if options.play is not None:
-            filepath = os.path.join(podcast.media_dir, options.play)
-        elif options.play_latest:
-            filepath = podcast.get_latest()
-        elif options.play_random:
-            filepath = random.choice(podcast.list_fetched())
-        if not os.path.exists(filepath):
-            parser.error('File not found - %s' % filepath)
-        print 'Playing: %s' % filepath
+            count = 1
+            for filepath in self.podcast.list_fetched_chapters():
+                print '    %i: %s' % (count, os.path.basename(filepath))
+                count += 1
+            if count == 1:
+                print '    **** No fetched files.'
+            print
+            print 'Available remote files for "%s" (reverse sorted by date):' \
+                  % self.args.podcast_id
+            print
+            count = 1
+            for url in self.podcast.list_chapters():
+                print '    %i: %s' % (count, posixpath.basename(url))
+                count += 1
+            if count == 1:
+                print '    **** No remote files. Try running this script ' \
+                      'with `--sync\''
+            print
+
+    def cmd_get_latest(self):
+        print 'Fetching the latest chapter available for "%s"' % \
+              self.args.podcast_id
         print
-        podcast._player(filepath)
-        return 0
+        self.podcast.fetch_latest()
+
+    def cmd_play_latest(self):
+        print 'Playing the latest chapter fetched for "%s"' % \
+              self.args.podcast_id
+        print
+        self.podcast.play_latest()
+
+    def cmd_play_random(self):
+        print 'Playing a random chapter available for "%s"' % \
+              self.args.podcast_id
+        print
+        self.podcast.play_random()
+
+
+def main():
+    cli = Cli()
+    try:
+        return cli.run()
     except KeyboardInterrupt:
         print >> sys.stderr, 'Interrupted'
         return 1
     except RuntimeError, err:
-        print >> sys.stderr, 'marrie error - %s' % err
-        return 1
+        cli.parser.error('%s' % err)
     except Exception, err:
-        print >> sys.stderr, 'Unknown error - %s' % err
-        return 1
-    return 0
+        cli.parser.error('Unknown error - %s' % err)
 
 if __name__ == '__main__':
     sys.exit(main())
