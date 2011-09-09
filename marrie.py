@@ -17,7 +17,7 @@ __email__ = 'rafael@rafaelmartins.eng.br'
 
 __description__ = 'A simple podcast client that runs on the CLI.'
 __url__ = 'http://rafaelmartins.eng.br/en-us/projects/marrie/'
-__copyright__ = '(c) 2010 %s <%s>' % (__author__, __email__)
+__copyright__ = '(c) 2010-2011 %s <%s>' % (__author__, __email__)
 __license__ = 'BSD'
 
 __version__ = '0.2.1+'
@@ -262,6 +262,8 @@ class Cli(object):
                                  '`--play\', remote for `--get\'. This '
                                  'identifier is variable and is available on '
                                  '`--list\'', type=int)
+        self.parser.add_argument('-v', '--version', action='version',
+                                 version='%%(prog)s %s' % __version__)
         self.parser.add_argument('--config-file', metavar='FILE',
                                  dest='config_file', help='configuration file '
                                  'to be used. It will override the default '
