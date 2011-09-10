@@ -4,7 +4,7 @@
     marrie
     ~~~~~~
 
-    marrie is a simple podcast client that runs on the CLI (bash).
+    A simple podcast client that runs on the Command Line Interface.
 
     :copyright: (c) 2010-2011 by Rafael Goncalves Martins
     :license: BSD, see LICENSE for more details.
@@ -15,8 +15,9 @@ __all__ = ['Config', 'Podcast', 'Cli', 'main']
 __author__ = 'Rafael Goncalves Martins'
 __email__ = 'rafael@rafaelmartins.eng.br'
 
-__description__ = 'A simple podcast client that runs on the CLI.'
-__url__ = 'http://rafaelmartins.eng.br/en-us/projects/marrie/'
+__description__ = 'A simple podcast client that runs on the Command Line ' \
+                'Interface.'
+__url__ = 'http://rafaelmartins.eng.br/projects/marrie/'
 __copyright__ = '(c) 2010-2011 %s <%s>' % (__author__, __email__)
 __license__ = 'BSD'
 
@@ -389,9 +390,9 @@ def main():
         print >> sys.stderr, 'Interrupted'
         return -1
     except RuntimeError, err:
-        cli.parser.error('%s' % err)
+        print >> sys.stderr, 'marrie error - %s' % err
     except Exception, err:
-        cli.parser.error('Unknown error - %s' % err)
+        print >> sys.stderr, 'Unknown error - %s' % err
 
 if __name__ == '__main__':
     sys.exit(main())
