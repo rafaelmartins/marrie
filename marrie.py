@@ -130,7 +130,7 @@ class Podcast(object):
             raise RuntimeError('Failed to save the file (%s): %s' % \
                                (filepath, str(err)))
         else:
-            self.podcast.set_latest(filepath)
+            self.set_latest(filepath)
 
     def _play(self, filename):
         filepath = os.path.join(self.media_dir, os.path.basename(filename))
@@ -396,7 +396,7 @@ def main():
         return cli.run()
     except KeyboardInterrupt:
         print >> sys.stderr, 'Interrupted'
-        return -1
+        return 1
     except RuntimeError, err:
         print >> sys.stderr, 'marrie error - %s' % err
     except Exception, err:
