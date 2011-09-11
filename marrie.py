@@ -114,6 +114,8 @@ class Podcast(object):
         self._cache_file = os.path.join(self.media_dir, '.cache')
         self._latest_file = os.path.join(self.media_dir, '.latest')
 
+    ### Subprocess wrappers ###
+
     def _fetch(self, url):
         filepath = os.path.join(self.media_dir, posixpath.basename(url))
         part_file = filepath + '.part'
@@ -138,6 +140,44 @@ class Podcast(object):
             raise RuntimeError('Failed to play the file (%s): %i' % \
                                (filepath, rv))
 
+    ### Internal helpers ###
+
+    def _load_cache(self):
+        try:
+            with codecs.open(self._cache_file, encoding='utf-8') as fp:
+                return json.load(fp)
+        except Exception, err:
+            raise RuntimeError('Failed to load cache (%s): %s' % \
+                               (self._cache_file, str(err)))
+
+    def _convert_oldstyle_latest(self):
+        old_latest = os.path.join(self.media_dir, 'LATEST')
+        if os.path.exists(old_latest):
+            try:
+                with codecs.open(old_latest, encoding='utf-8') as fp:
+                    os.symlink(fp.read().strip(), self._latest_file)
+            except Exception, err:
+                raise RuntimeError('Failed to convert old-style LATEST file ' \
+                                   'to symlink: %s' % str(err))
+            else:
+                os.unlink(old_latest)
+
+    ### Action helpers ###
+
+    def list_chapters(self):
+        if os.path.exists(self._cache_file):
+            return self._load_cache()
+        return []
+
+    def list_fetched_chapters(self):
+        chapters = os.listdir(self.media_dir)
+        mylist = []
+        for chapter in chapters:
+            if chapter not in ('.cache', '.latest') and \
+               not chapter.endswith('.part'):
+                mylist.append(os.path.join(self.media_dir, chapter))
+        return mylist
+
     def sync(self):
         self._convert_oldstyle_latest()
         purl = self.config.podcast[self.pid]
@@ -160,31 +200,6 @@ class Podcast(object):
             raise RuntimeError('Failed to save cache (%s): %s' % \
                                (self._cache_file, str(err)))
 
-    def _load_cache(self):
-        try:
-            with codecs.open(self._cache_file, encoding='utf-8') as fp:
-                return json.load(fp)
-        except Exception, err:
-            raise RuntimeError('Failed to load cache (%s): %s' % \
-                               (self._cache_file, str(err)))
-
-    def _convert_oldstyle_latest(self):
-        old_latest = os.path.join(self.media_dir, 'LATEST')
-        if os.path.exists(old_latest):
-            try:
-                with codecs.open(old_latest, encoding='utf-8') as fp:
-                    os.symlink(fp.read().strip(), self._latest_file)
-            except Exception, err:
-                raise RuntimeError('Failed to convert old-style LATEST file ' \
-                                   'to symlink: %s' % str(err))
-            else:
-                os.unlink(old_latest)
-
-    def list_chapters(self):
-        if os.path.exists(self._cache_file):
-            return self._load_cache()
-        return []
-
     def fetch(self, chapter_id):
         chapters = self.list_chapters()
         chapter_id = chapter_id - 1
@@ -205,7 +220,7 @@ class Podcast(object):
         self._fetch(chapters[0])
 
     def play(self, chapter_id):
-        chapters = list(self.list_fetched_chapters())
+        chapters = self.list_fetched_chapters()
         chapter_id = chapter_id - 1
         try:
             chapter = chapters[chapter_id]
@@ -218,7 +233,7 @@ class Podcast(object):
         self._play(self.get_latest())
 
     def play_random(self):
-        chapters = list(self.list_fetched_chapters())
+        chapters = self.list_fetched_chapters()
         if not len(chapters):
             raise RuntimeError('No chapters available.')
         self.play(random.choice(chapters))
@@ -238,15 +253,6 @@ class Podcast(object):
         except Exception, err:
             raise RuntimeError('Failed to create the .latest symlink: %s' % \
                                str(err))
-
-    def list_fetched_chapters(self):
-        chapters = os.listdir(self.media_dir)
-        if len(chapters) == 0:
-            raise RuntimeError('No chapter available!')
-        for chapter in chapters:
-            if chapter not in ('.cache', '.latest') and \
-               not chapter.endswith('.part'):
-                yield os.path.join(self.media_dir, chapter)
 
 
 class Cli(object):
