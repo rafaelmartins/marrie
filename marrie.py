@@ -397,10 +397,9 @@ def main():
     except KeyboardInterrupt:
         print >> sys.stderr, 'Interrupted'
         return 1
-    except RuntimeError, err:
-        print >> sys.stderr, 'marrie error - %s' % err
     except Exception, err:
-        print >> sys.stderr, 'Unknown error - %s' % err
+        print >> sys.stderr, '%s - %s' % (err.__class__.__name__, err)
+        return 1
 
 if __name__ == '__main__':
     sys.exit(main())
