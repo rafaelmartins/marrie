@@ -249,6 +249,8 @@ class Podcast(object):
 
     def set_latest(self, url):
         try:
+            if os.path.exists(self._latest_file):
+                os.unlink(self._latest_file)
             os.symlink(posixpath.basename(url), self._latest_file)
         except Exception, err:
             raise RuntimeError('Failed to create the .latest symlink: %s' % \
