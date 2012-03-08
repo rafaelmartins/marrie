@@ -400,12 +400,11 @@ def main():
         return cli.run()
     except KeyboardInterrupt:
         print >> sys.stderr, 'Interrupted'
-        return 1
     except MarrieError, err:
         print >> sys.stderr, 'error: %s' % err
     except Exception, err:
         print >> sys.stderr, 'error (%s): %s' % (err.__class__.__name__, err)
-        return 1
+    return 1
 
 if __name__ == '__main__':
     sys.exit(main())
