@@ -10,7 +10,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-__all__ = ['Config', 'Podcast', 'Cli', 'main']
+__all__ = ['MarrieError', 'Config', 'Podcast', 'Cli', 'main']
 
 __author__ = 'Rafael Goncalves Martins'
 __email__ = 'rafael@rafaelmartins.eng.br'
@@ -66,6 +66,10 @@ media_dir = ~/podcasts
 '''
 
 
+class MarrieError(Exception):
+    pass
+
+
 class Config(object):
 
     _raw_options = ('fetch_command', 'player_command')
@@ -77,14 +81,14 @@ class Config(object):
         if not os.path.exists(my_file):
             with codecs.open(my_file, 'w', encoding='utf-8') as fp:
                 fp.write(config_file)
-            raise RuntimeError(
+            raise MarrieError(
                 'Missing config file: %s. Will be created for you.' % my_file)
         self._cp = ConfigParser()
         self._cp.read(my_file)
         for opt in (self._raw_options + self._options):
             if not self._cp.has_option('config', opt):
-                raise RuntimeError('Missing needed config option: config:%s' \
-                                   % opt)
+                raise MarrieError('Missing needed config option: config:%s' \
+                                  % opt)
 
     def __getattr__(self, attr):
         opt = None
@@ -106,7 +110,7 @@ class Podcast(object):
     def __init__(self, config, pid):
         self.config = config
         if pid not in self.config.podcast:
-            raise RuntimeError('Invalid podcast ID: %s' % pid)
+            raise MarrieError('Invalid podcast ID: %s' % pid)
         self.pid = pid
         self.media_dir = os.path.join(self.config.media_dir, self.pid)
         if not os.path.exists(self.media_dir):
@@ -122,13 +126,13 @@ class Podcast(object):
         rv = subprocess.call(self.config.fetch_command % \
                              dict(url=url, file=part_file), shell=True)
         if rv != os.EX_OK:
-            raise RuntimeError('Failed to download the file (%s): %i' % \
-                               (url, rv))
+            raise MarrieError('Failed to download the file (%s): %i' % \
+                              (url, rv))
         try:
             shutil.move(part_file, filepath)
         except Exception, err:
-            raise RuntimeError('Failed to save the file (%s): %s' % \
-                               (filepath, str(err)))
+            raise MarrieError('Failed to save the file (%s): %s' % \
+                              (filepath, str(err)))
         else:
             self.set_latest(filepath)
 
@@ -137,8 +141,8 @@ class Podcast(object):
         rv = subprocess.call(self.config.player_command % dict(file=filepath),
                              shell=True)
         if rv != os.EX_OK:
-            raise RuntimeError('Failed to play the file (%s): %i' % \
-                               (filepath, rv))
+            raise MarrieError('Failed to play the file (%s): %i' % \
+                              (filepath, rv))
 
     ### Internal helpers ###
 
@@ -147,8 +151,8 @@ class Podcast(object):
             with codecs.open(self._cache_file, encoding='utf-8') as fp:
                 return json.load(fp)
         except Exception, err:
-            raise RuntimeError('Failed to load cache (%s): %s' % \
-                               (self._cache_file, str(err)))
+            raise MarrieError('Failed to load cache (%s): %s' % \
+                              (self._cache_file, str(err)))
 
     def _convert_oldstyle_latest(self):
         old_latest = os.path.join(self.media_dir, 'LATEST')
@@ -157,8 +161,8 @@ class Podcast(object):
                 with codecs.open(old_latest, encoding='utf-8') as fp:
                     os.symlink(fp.read().strip(), self._latest_file)
             except Exception, err:
-                raise RuntimeError('Failed to convert old-style LATEST file ' \
-                                   'to symlink: %s' % str(err))
+                raise MarrieError('Failed to convert old-style LATEST file ' \
+                                  'to symlink: %s' % str(err))
             else:
                 os.unlink(old_latest)
 
@@ -185,8 +189,8 @@ class Podcast(object):
             with closing(urllib2.urlopen(purl)) as fp:
                 rss = parseXML(fp)
         except Exception, err:
-            raise RuntimeError('Failed to parse the feed (%s): %s' % \
-                               (purl, str(err)))
+            raise MarrieError('Failed to parse the feed (%s): %s' % \
+                              (purl, str(err)))
         enclosure = rss.getElementsByTagName('enclosure')
         chapters = []
         for chapter in enclosure:
@@ -197,8 +201,8 @@ class Podcast(object):
             with codecs.open(self._cache_file, 'w', encoding='utf-8') as fp:
                 json.dump(chapters, fp)
         except Exception, err:
-            raise RuntimeError('Failed to save cache (%s): %s' % \
-                               (self._cache_file, str(err)))
+            raise MarrieError('Failed to save cache (%s): %s' % \
+                              (self._cache_file, str(err)))
 
     def fetch(self, chapter_id):
         chapters = self.list_chapters()
@@ -206,17 +210,17 @@ class Podcast(object):
         try:
             chapter = chapters[chapter_id]
         except IndexError:
-            raise RuntimeError('Invalid chapter identifier.')
+            raise MarrieError('Invalid chapter identifier.')
         else:
             self._fetch(chapter)
 
     def fetch_latest(self):
         chapters = self.list_chapters()
         if len(chapters) == 0:
-            raise RuntimeError('No chapters available.')
+            raise MarrieError('No chapters available.')
         if os.path.exists(os.path.join(self.media_dir,
                                        posixpath.basename(chapters[0]))):
-            raise RuntimeError('No newer podcast available.')
+            raise MarrieError('No newer podcast available.')
         self._fetch(chapters[0])
 
     def play(self, chapter_id):
@@ -225,7 +229,7 @@ class Podcast(object):
         try:
             chapter = chapters[chapter_id]
         except IndexError:
-            raise RuntimeError('Invalid chapter identifier.')
+            raise MarrieError('Invalid chapter identifier.')
         else:
             self._play(chapter)
 
@@ -235,16 +239,16 @@ class Podcast(object):
     def play_random(self):
         chapters = self.list_fetched_chapters()
         if not len(chapters):
-            raise RuntimeError('No chapters available.')
+            raise MarrieError('No chapters available.')
         self.play(random.choice(chapters))
 
     def get_latest(self):
         if not os.path.exists(self._latest_file):
-            raise RuntimeError('No podcast file registered as latest.')
+            raise MarrieError('No podcast file registered as latest.')
         latest_file = os.path.realpath(self._latest_file)
         if not os.path.exists(latest_file):
-            raise RuntimeError('Broken symlink: %s -> %s' % (self._latest_file,
-                                                             latest_file))
+            raise MarrieError('Broken symlink: %s -> %s' % (self._latest_file,
+                                                            latest_file))
         return latest_file
 
     def set_latest(self, url):
@@ -253,8 +257,8 @@ class Podcast(object):
                 os.unlink(self._latest_file)
             os.symlink(posixpath.basename(url), self._latest_file)
         except Exception, err:
-            raise RuntimeError('Failed to create the .latest symlink: %s' % \
-                               str(err))
+            raise MarrieError('Failed to create the .latest symlink: %s' % \
+                              str(err))
 
 
 class Cli(object):
@@ -270,7 +274,7 @@ class Cli(object):
                                  help='chapter identifier, local for '
                                  '`--play\', remote for `--get\'. This '
                                  'identifier is variable and is available on '
-                                 '`--list\'', type=int)
+                                 '`--list CHAPTER_ID\'', type=int)
         self.parser.add_argument('-v', '--version', action='version',
                                  version='%%(prog)s %s' % __version__)
         self.parser.add_argument('--config-file', metavar='FILE',
@@ -397,8 +401,10 @@ def main():
     except KeyboardInterrupt:
         print >> sys.stderr, 'Interrupted'
         return 1
+    except MarrieError, err:
+        print >> sys.stderr, 'error: %s' % err
     except Exception, err:
-        print >> sys.stderr, '%s - %s' % (err.__class__.__name__, err)
+        print >> sys.stderr, 'error (%s): %s' % (err.__class__.__name__, err)
         return 1
 
 if __name__ == '__main__':
