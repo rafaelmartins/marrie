@@ -18,7 +18,7 @@ setup(
     author_email=marrie.__email__,
     url=marrie.__url__,
     py_modules=['marrie'],
-    install_requires=['argparse'],
+    install_requires=['argparse', 'feedparser'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
@@ -26,6 +26,7 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
         'Topic :: Multimedia :: Sound/Audio',
+        'Topic :: Multimedia :: Video',
     ],
     entry_points={'console_scripts': ['marrie = marrie:main']},
 )

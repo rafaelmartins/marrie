@@ -25,6 +25,7 @@ __version__ = '0.2.1+'
 
 import argparse
 import codecs
+import feedparser
 import json
 import os
 import posixpath
@@ -32,11 +33,8 @@ import random
 import shutil
 import subprocess
 import sys
-import urllib2
 from collections import OrderedDict
 from ConfigParser import ConfigParser
-from contextlib import closing
-from xml.dom.minidom import parse as parseXML
 
 config_file = '''\
 [config]
@@ -182,17 +180,17 @@ class Podcast(object):
         self._convert_oldstyle_latest()
         purl = self.config.podcast[self.pid]
         try:
-            with closing(urllib2.urlopen(purl)) as fp:
-                rss = parseXML(fp)
+            rss = feedparser.parse(purl)
         except Exception, err:
             raise RuntimeError('Failed to parse the feed (%s): %s' % \
                                (purl, str(err)))
-        enclosure = rss.getElementsByTagName('enclosure')
         chapters = []
-        for chapter in enclosure:
-            if chapter.getAttribute('type').startswith('audio/'):
-                url = chapter.getAttribute('url')
-                chapters.append(url.strip())
+        for entry in rss.entries:
+            for link in entry.links:
+                if link.rel == 'enclosure':
+                    category = link.type.split('/')[0]
+                    if category in ('audio', 'video'):
+                        chapters.append(link.href)
         try:
             with codecs.open(self._cache_file, 'w', encoding='utf-8') as fp:
                 json.dump(chapters, fp)
