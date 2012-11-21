@@ -17,7 +17,7 @@ __email__ = 'rafael@rafaelmartins.eng.br'
 
 __description__ = 'A simple podcast client that runs on the Command Line ' \
                 'Interface.'
-__url__ = 'http://rafaelmartins.eng.br/projects/marrie/'
+__url__ = 'http://projects.rafaelmartins.eng.br/marrie/'
 __copyright__ = '(c) 2010-2012 %s <%s>' % (__author__, __email__)
 __license__ = 'BSD'
 
