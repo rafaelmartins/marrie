@@ -222,14 +222,16 @@ class Podcast(object):
         self._fetch(chapters[0])
 
     def play(self, chapter_id):
-        chapters = self.list_fetched_chapters()
-        chapter_id = chapter_id - 1
-        try:
-            chapter = chapters[chapter_id]
-        except IndexError:
-            raise MarrieError('Invalid chapter identifier.')
+        if isinstance(chapter_id, int):
+            chapters = self.list_fetched_chapters()
+            chapter_id = chapter_id - 1
+            try:
+                chapter = chapters[chapter_id]
+            except IndexError:
+                raise MarrieError('Invalid chapter identifier.')
         else:
-            self._play(chapter)
+            chapter = chapter_id
+        self._play(chapter)
 
     def play_latest(self):
         self._play(self.get_latest())
@@ -400,8 +402,6 @@ def main():
         print >> sys.stderr, 'Interrupted'
     except MarrieError, err:
         print >> sys.stderr, 'error: %s' % err
-    except Exception, err:
-        print >> sys.stderr, 'error (%s): %s' % (err.__class__.__name__, err)
     return 1
 
 if __name__ == '__main__':
