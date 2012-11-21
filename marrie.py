@@ -6,7 +6,7 @@
 
     A simple podcast client that runs on the Command Line Interface.
 
-    :copyright: (c) 2010-2011 by Rafael Goncalves Martins
+    :copyright: (c) 2010-2012 by Rafael Goncalves Martins
     :license: BSD, see LICENSE for more details.
 """
 
@@ -18,7 +18,7 @@ __email__ = 'rafael@rafaelmartins.eng.br'
 __description__ = 'A simple podcast client that runs on the Command Line ' \
                 'Interface.'
 __url__ = 'http://rafaelmartins.eng.br/projects/marrie/'
-__copyright__ = '(c) 2010-2011 %s <%s>' % (__author__, __email__)
+__copyright__ = '(c) 2010-2012 %s <%s>' % (__author__, __email__)
 __license__ = 'BSD'
 
 __version__ = '0.2.1+'
@@ -58,8 +58,8 @@ media_dir = ~/podcasts
 
 [podcast]
 
-# List of RSS feeds of your podcasts, in the format:
-#   podcast_id = http://url.to/the/rss/feed.xml
+# List of feeds of your podcasts, in the format:
+#   podcast_id = http://example.org/rss/feed.xml
 
 '''
 
@@ -80,7 +80,7 @@ class Config(object):
             with codecs.open(my_file, 'w', encoding='utf-8') as fp:
                 fp.write(config_file)
             raise MarrieError(
-                'Missing config file: %s. Will be created for you.' % my_file)
+                'Missing config file: %s. It will be created for you.' % my_file)
         self._cp = ConfigParser()
         self._cp.read(my_file)
         for opt in (self._raw_options + self._options):
