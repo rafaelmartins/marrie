@@ -41,12 +41,14 @@ for you at ``~/.marrie``. Edit it as follows.
 
 The main section of the configuration file.
 
-- ``fetch_command``: The command used to fetch the media files. The default
+- ``fetch_command``: The command used to fetch the chapters. The default
   command will use ``wget``. If you want to change it, make sure that the
   variables ``%(file)s`` and ``%(url)s`` are correctly used on your command.
-- ``player_command``: The command used to play the media files. The default
+- ``player_command``: The command used to play the chapters. The default
   command will use ``mplayer``. If you want to change it, make sure that the
   variable ``%(file)s`` is correctly used on your command.
+- ``media_dir``: The directory where the chapters will be stored. Defaults to
+  ``~/podcasts``. A subfolder will be created for each feed.
 
 ``[podcast]`` section
 ~~~~~~~~~~~~~~~~~~~~~
