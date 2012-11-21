@@ -20,7 +20,7 @@ using ``pip``::
 If you are a Gentoo_ user, you can install it using your favorite package
 manager::
 
-    # emerge -av marrie
+    # emerge -av media-sound/marrie
 
 
 Configuration
