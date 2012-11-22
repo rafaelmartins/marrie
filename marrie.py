@@ -21,7 +21,7 @@ __url__ = 'http://projects.rafaelmartins.eng.br/marrie/'
 __copyright__ = '(c) 2010-2012 %s <%s>' % (__author__, __email__)
 __license__ = 'BSD'
 
-__version__ = '0.3'
+__version__ = '0.3+'
 
 import argparse
 import codecs
