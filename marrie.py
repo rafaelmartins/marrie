@@ -6,21 +6,11 @@
 
     A simple podcast client that runs on the Command Line Interface.
 
-    :copyright: (c) 2010-2012 by Rafael Goncalves Martins
+    :copyright: (c) 2010-2013 by Rafael Goncalves Martins
     :license: BSD, see LICENSE for more details.
 """
 
 __all__ = ['MarrieError', 'Config', 'Podcast', 'Cli', 'main']
-
-__author__ = 'Rafael Goncalves Martins'
-__email__ = 'rafael@rafaelmartins.eng.br'
-
-__description__ = 'A simple podcast client that runs on the Command Line ' \
-                'Interface.'
-__url__ = 'http://projects.rafaelmartins.eng.br/marrie/'
-__copyright__ = '(c) 2010-2012 %s <%s>' % (__author__, __email__)
-__license__ = 'BSD'
-
 __version__ = '0.3+'
 
 import argparse
@@ -266,7 +256,9 @@ class Cli(object):
     _required_pid = ('get', 'play', 'play_random')
 
     def __init__(self):
-        self.parser = argparse.ArgumentParser(description=__description__)
+        self.parser = argparse.ArgumentParser(
+            description=('A simple podcast client that runs on the Command '
+                         'Line Interface.'))
         self.parser.add_argument('podcast_id', nargs='?', metavar='PODCAST_ID',
                                  help='podcast identifier, from the '
                                  'configuration file')
