@@ -11,7 +11,7 @@
 """
 
 __all__ = ['MarrieError', 'Config', 'Podcast', 'Cli', 'main']
-__version__ = '0.3.1'
+__version__ = '0.3.1+'
 
 import argparse
 import codecs
