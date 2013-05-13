@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from setuptools import setup
-import marrie
 import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
