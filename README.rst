@@ -146,9 +146,9 @@ You can send patches to my email address:
 
 rafael@rafaelmartins.eng.br .
 
-Patches should be created against the Mercurial repository:
+Patches should be created against the Git repository:
 
-http://hg.rafaelmartins.eng.br/marrie/
+https://github.com/rafaelmartins/marrie/
 
 Any patch that heavily increases the complexity of the script will be rejected!
 
