@@ -1,0 +1,7 @@
+/build/
+/dist/
+*.pyc
+*.pyo
+/MANIFEST
+/marrie.egg-info
+/*.wpr

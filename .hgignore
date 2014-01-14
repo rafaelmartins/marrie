@@ -1,5 +1,0 @@
-^(build|dist)/
-\.py[co]$
-^MANIFEST$
-^marrie.egg-info
-\.wpr$
