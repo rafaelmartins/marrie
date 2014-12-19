@@ -180,11 +180,12 @@ class Podcast(object):
                               (purl, str(err)))
         chapters = []
         for entry in rss.entries:
+            published = entry.get('published')
             for link in entry.links:
                 if link.rel == 'enclosure' and hasattr(link, 'type'):
                     category = link.type.split('/')[0]
                     if category in ('audio', 'video'):
-                        chapters.append(link.href)
+                        chapters.append((link.href, published))
         try:
             with codecs.open(self._cache_file, 'w', encoding='utf-8') as fp:
                 json.dump(chapters, fp)
@@ -197,6 +198,8 @@ class Podcast(object):
         chapter_id = chapter_id - 1
         try:
             chapter = chapters[chapter_id]
+            if not isinstance(chapter, basestring):
+                chapter = chapter[0]
         except IndexError:
             raise MarrieError('Invalid chapter identifier.')
         else:
@@ -206,10 +209,13 @@ class Podcast(object):
         chapters = self.list_chapters()
         if len(chapters) == 0:
             raise MarrieError('No chapters available.')
+        chapter = chapters[0]
+        if not isinstance(chapter, basestring):
+            chapter = chapter[0]
         if os.path.exists(os.path.join(self.media_dir,
-                                       posixpath.basename(chapters[0]))):
+                                       posixpath.basename(chapter))):
             raise MarrieError('No newer podcast available.')
-        self._fetch(chapters[0])
+        self._fetch(chapter)
 
     def play(self, chapter_id):
         if isinstance(chapter_id, int):
@@ -348,7 +354,12 @@ class Cli(object):
             print
             count = 1
             for url in self.podcast.list_chapters():
-                print '    %i: %s' % (count, posixpath.basename(url))
+                if isinstance(url, basestring):
+                    print '    %i: %s' % (count, posixpath.basename(url))
+                else:
+                    print '    %i: %s (%s)' % (count,
+                                               posixpath.basename(url[0]),
+                                               url[1])
                 count += 1
             if count == 1:
                 print '    **** No remote files. Try running this script ' \
