@@ -181,7 +181,7 @@ class Podcast(object):
         chapters = []
         for entry in rss.entries:
             for link in entry.links:
-                if link.rel == 'enclosure':
+                if link.rel == 'enclosure' and hasattr(link, 'type'):
                     category = link.type.split('/')[0]
                     if category in ('audio', 'video'):
                         chapters.append(link.href)
