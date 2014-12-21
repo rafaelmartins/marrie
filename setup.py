@@ -18,7 +18,7 @@ setup(
     author_email='rafael@rafaelmartins.eng.br',
     url='http://projects.rafaelmartins.eng.br/marrie/',
     py_modules=['marrie'],
-    install_requires=['feedparser'],
+    install_requires=['feedparser >= 5.1.3'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
