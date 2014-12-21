@@ -92,9 +92,9 @@ available chapters first::
 
     Remote files available for "my_podcast" (reverse sorted by date):
 
-        1: chapter_100.mp3
-        2: chapter_99.mp3
-        3: chapter_98.mp3
+        1: chapter_100.mp3 (Fri, 19 Dec 2014 03:00:00 +0000)
+        2: chapter_99.mp3 (Fri, 19 Dec 2014 02:00:00 +0000)
+        3: chapter_98.mp3 (Fri, 19 Dec 2014 01:00:00 +0000)
     ...
 
 If you want to download the ``chapter_99.mp3``, just type::

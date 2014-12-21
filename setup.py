@@ -16,7 +16,7 @@ setup(
     long_description=long_description,
     author='Rafael Goncalves Martins',
     author_email='rafael@rafaelmartins.eng.br',
-    url='http://projects.rafaelmartins.eng.br/marrie/',
+    url='https://github.com/rafaelmartins/marrie',
     py_modules=['marrie'],
     install_requires=['feedparser >= 5.1.3'],
     classifiers=[
