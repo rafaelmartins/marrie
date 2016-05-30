@@ -279,6 +279,10 @@ class Cli(object):
                                  dest='config_file', help='configuration file '
                                  'to be used. It will override the default '
                                  'file `~/.marrie\'')
+        self.parser.add_argument('--all', action='store_true',
+                                dest='all_podcasts',
+                                help='with --get, download all configured '
+                                'podcasts')
         self.group = self.parser.add_mutually_exclusive_group()
         self.group.add_argument('-s', '--sync', action='store_const',
                                 dest='callback', const=self.cmd_sync,
@@ -312,7 +316,8 @@ class Cli(object):
             self.parser.print_help()
             return os.EX_USAGE
         if callback.__name__.lstrip('cmd_') in self._required_pid:
-            if self.args.podcast_id is None:
+            if self.args.podcast_id is None and \
+                    not self.args.all_podcasts:
                 self.parser.error('one argument is required.')
         if self.args.podcast_id is not None:
             self.podcast = Podcast(self.config, self.args.podcast_id)
@@ -367,16 +372,29 @@ class Cli(object):
             print
 
     def cmd_get(self):
-        if self.args.chapter_id is None:
-            print 'Fetching the latest chapter available for "%s"' % \
-                  self.args.podcast_id
-            print
-            self.podcast.fetch_latest()
-            return os.EX_OK
-        print 'Fetching chapter "%i" for "%s"' % (self.args.chapter_id,
-                                                  self.args.podcast_id)
-        print
-        self.podcast.fetch(self.args.chapter_id)
+        if self.args.all_podcasts:
+            pids = self.config.podcast
+        else:
+            pids = [self.args.podcast_id]
+        err = None
+        for pid in pids:
+            try:
+                podcast = Podcast(self.config, pid)
+                if self.args.chapter_id is None:
+                    print 'Fetching the latest chapter available for "%s"' % \
+                            pid
+                    print
+                    podcast.fetch_latest()
+                else:
+                    print ('Fetching chapter "%i" for "%s"' %
+                            (self.args.chapter_id, pid))
+                    print
+                    podcast.fetch(self.args.chapter_id)
+            except MarrieError as e:
+                sys.stderr.write("%s\n" % str(e))
+                err = e
+        if err:
+            sys.exit(1)
 
     def cmd_play(self):
         if self.args.chapter_id is None:
