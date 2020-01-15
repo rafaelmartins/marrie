@@ -24,7 +24,7 @@ import shutil
 import subprocess
 import sys
 from collections import OrderedDict
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 
 config_file = '''\
 [config]
@@ -81,7 +81,7 @@ class Config(object):
     def __getattr__(self, attr):
         opt = None
         if attr in self._raw_options:
-            opt = self._cp.get('config', attr, True)
+            opt = self._cp.get('config', attr, raw=True)
         elif attr in self._options:
             opt = self._cp.get('config', attr)
         elif attr == 'podcast':
@@ -118,7 +118,7 @@ class Podcast(object):
                               (url, rv))
         try:
             shutil.move(part_file, filepath)
-        except Exception, err:
+        except Exception as err:
             raise MarrieError('Failed to save the file (%s): %s' % \
                               (filepath, str(err)))
         else:
@@ -138,7 +138,7 @@ class Podcast(object):
         try:
             with codecs.open(self._cache_file, encoding='utf-8') as fp:
                 return json.load(fp)
-        except Exception, err:
+        except Exception as err:
             raise MarrieError('Failed to load cache (%s): %s' % \
                               (self._cache_file, str(err)))
 
@@ -148,7 +148,7 @@ class Podcast(object):
             try:
                 with codecs.open(old_latest, encoding='utf-8') as fp:
                     os.symlink(fp.read().strip(), self._latest_file)
-            except Exception, err:
+            except Exception as err:
                 raise MarrieError('Failed to convert old-style LATEST file ' \
                                   'to symlink: %s' % str(err))
             else:
@@ -175,7 +175,7 @@ class Podcast(object):
         purl = self.config.podcast[self.pid]
         try:
             rss = feedparser.parse(purl)
-        except Exception, err:
+        except Exception as err:
             raise MarrieError('Failed to parse the feed (%s): %s' % \
                               (purl, str(err)))
         chapters = []
@@ -189,7 +189,7 @@ class Podcast(object):
         try:
             with codecs.open(self._cache_file, 'w', encoding='utf-8') as fp:
                 json.dump(chapters, fp)
-        except Exception, err:
+        except Exception as err:
             raise MarrieError('Failed to save cache (%s): %s' % \
                               (self._cache_file, str(err)))
 
@@ -198,7 +198,7 @@ class Podcast(object):
         chapter_id = chapter_id - 1
         try:
             chapter = chapters[chapter_id]
-            if not isinstance(chapter, basestring):
+            if not isinstance(chapter, str):
                 chapter = chapter[0]
         except IndexError:
             raise MarrieError('Invalid chapter identifier.')
@@ -210,7 +210,7 @@ class Podcast(object):
         if len(chapters) == 0:
             raise MarrieError('No chapters available.')
         chapter = chapters[0]
-        if not isinstance(chapter, basestring):
+        if not isinstance(chapter, str):
             chapter = chapter[0]
         if os.path.exists(os.path.join(self.media_dir,
                                        posixpath.basename(chapter))):
@@ -252,7 +252,7 @@ class Podcast(object):
             if os.path.exists(self._latest_file):
                 os.unlink(self._latest_file)
             os.symlink(posixpath.basename(url), self._latest_file)
-        except Exception, err:
+        except Exception as err:
             raise MarrieError('Failed to create the .latest symlink: %s' % \
                               str(err))
 
@@ -327,49 +327,49 @@ class Cli(object):
 
     def cmd_sync(self):
         if self.args.podcast_id is not None:
-            print 'Syncronizing feed "%s".' % self.args.podcast_id
+            print('Syncronizing feed "%s".' % self.args.podcast_id)
             self.podcast.sync()
             return os.EX_OK
         for pid in self.config.podcast:
-            print 'Syncronizing feed "%s".' % pid
+            print('Syncronizing feed "%s".' % pid)
             podcast = Podcast(self.config, pid)
             podcast.sync()
 
     def cmd_list(self):
         if self.args.podcast_id is None:
-            print 'Podcast feeds available:'
-            print
+            print('Podcast feeds available:')
+            print()
             for pid in self.config.podcast:
-                print '    %s - %s' % (pid, self.config.podcast[pid])
-            print
+                print('    %s - %s' % (pid, self.config.podcast[pid]))
+            print()
             return os.EX_OK
         else:
-            print 'Fetched files available for "%s" (sorted by name):' \
-                  % self.args.podcast_id
-            print
+            print('Fetched files available for "%s" (sorted by name):'
+                  % self.args.podcast_id)
+            print()
             count = 1
             for filepath in self.podcast.list_fetched_chapters():
-                print '    %i: %s' % (count, os.path.basename(filepath))
+                print('    %i: %s' % (count, os.path.basename(filepath)))
                 count += 1
             if count == 1:
-                print '    **** No fetched files.'
-            print
-            print 'Remote files available for "%s" (reverse sorted by date):' \
-                  % self.args.podcast_id
-            print
+                print('    **** No fetched files.')
+            print()
+            print('Remote files available for "%s" (reverse sorted by date):'
+                  % self.args.podcast_id)
+            print()
             count = 1
             for url in self.podcast.list_chapters():
-                if isinstance(url, basestring):
-                    print '    %i: %s' % (count, posixpath.basename(url))
+                if isinstance(url, str):
+                    print('    %i: %s' % (count, posixpath.basename(url)))
                 else:
-                    print '    %i: %s (%s)' % (count,
+                    print('    %i: %s (%s)' % (count,
                                                posixpath.basename(url[0]),
-                                               url[1])
+                                               url[1]))
                 count += 1
             if count == 1:
-                print '    **** No remote files. Try running this script ' \
-                      'with `--sync\''
-            print
+                print('    **** No remote files. Try running this script '
+                      'with `--sync\'')
+            print()
 
     def cmd_get(self):
         if self.args.all_podcasts:
@@ -381,14 +381,12 @@ class Cli(object):
             try:
                 podcast = Podcast(self.config, pid)
                 if self.args.chapter_id is None:
-                    print 'Fetching the latest chapter available for "%s"' % \
-                            pid
-                    print
+                    print('Fetching the latest chapter available for "%s"' % pid)
+                    print()
                     podcast.fetch_latest()
                 else:
-                    print ('Fetching chapter "%i" for "%s"' %
-                            (self.args.chapter_id, pid))
-                    print
+                    print('Fetching chapter "%i" for "%s"' % (self.args.chapter_id, pid))
+                    print()
                     podcast.fetch(self.args.chapter_id)
             except MarrieError as e:
                 sys.stderr.write("%s\n" % str(e))
@@ -398,20 +396,20 @@ class Cli(object):
 
     def cmd_play(self):
         if self.args.chapter_id is None:
-            print 'Playing the latest chapter fetched for "%s"' % \
-                  self.args.podcast_id
-            print
+            print('Playing the latest chapter fetched for "%s"' %
+                  self.args.podcast_id)
+            print()
             self.podcast.play_latest()
             return os.EX_OK
-        print 'Playing chapter "%i" for "%s"' % (self.args.chapter_id,
-                                                 self.args.podcast_id)
-        print
+        print('Playing chapter "%i" for "%s"' % (self.args.chapter_id,
+                                                 self.args.podcast_id))
+        print()
         self.podcast.play(self.args.chapter_id)
 
     def cmd_play_random(self):
-        print 'Playing a random chapter available for "%s"' % \
-              self.args.podcast_id
-        print
+        print('Playing a random chapter available for "%s"' %
+              self.args.podcast_id)
+        print()
         self.podcast.play_random()
 
 
@@ -420,9 +418,9 @@ def main():
     try:
         return cli.run()
     except KeyboardInterrupt:
-        print >> sys.stderr, 'Interrupted'
-    except MarrieError, err:
-        print >> sys.stderr, 'error: %s' % err
+        print('Interrupted', file=sys.stderr)
+    except MarrieError as err:
+        print('error: %s' % err, file=sys.stderr)
     return 1
 
 if __name__ == '__main__':
