@@ -39,9 +39,9 @@ fetch_command = wget -c -O "%(file)s" "%(url)s"
 # Player command to play the files
 #
 # Examples:
-#   mplayer %(file)s
+#   mpv %(file)s
 #   mpg123 %(file)s
-player_command = mplayer %(file)s
+player_command = mpv %(file)s
 
 # Media directory to store the files
 media_dir = ~/podcasts
