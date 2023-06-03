@@ -18,13 +18,13 @@ import codecs
 import feedparser
 import json
 import os
-import posixpath
 import random
 import shutil
 import subprocess
 import sys
 from collections import OrderedDict
 from configparser import ConfigParser
+from urllib.parse import urlparse
 
 config_file = '''\
 [config]
@@ -93,6 +93,10 @@ class Config(object):
         return opt
 
 
+def url_to_filename(url):
+    return os.path.basename(urlparse(url).path)
+
+
 class Podcast(object):
 
     def __init__(self, config, pid):
@@ -109,7 +113,7 @@ class Podcast(object):
     ### Subprocess wrappers ###
 
     def _fetch(self, url):
-        filepath = os.path.join(self.media_dir, posixpath.basename(url))
+        filepath = os.path.join(self.media_dir, url_to_filename(url))
         part_file = filepath + '.part'
         rv = subprocess.call(self.config.fetch_command % \
                              dict(url=url, file=part_file), shell=True)
@@ -124,8 +128,7 @@ class Podcast(object):
         else:
             self.set_latest(filepath)
 
-    def _play(self, filename):
-        filepath = os.path.join(self.media_dir, os.path.basename(filename))
+    def _play(self, filepath):
         rv = subprocess.call(self.config.player_command % dict(file=filepath),
                              shell=True)
         if rv != os.EX_OK:
@@ -212,8 +215,8 @@ class Podcast(object):
         chapter = chapters[0]
         if not isinstance(chapter, str):
             chapter = chapter[0]
-        if os.path.exists(os.path.join(self.media_dir,
-                                       posixpath.basename(chapter))):
+        filepath = os.path.join(self.media_dir, url_to_filename(chapter))
+        if os.path.exists(filepath):
             raise MarrieError('No newer podcast available.')
         self._fetch(chapter)
 
@@ -227,7 +230,8 @@ class Podcast(object):
                 raise MarrieError('Invalid chapter identifier.')
         else:
             chapter = chapter_id
-        self._play(chapter)
+        filepath = os.path.join(self.media_dir, url_to_filename(chapter))
+        self._play(filepath)
 
     def play_latest(self):
         self._play(self.get_latest())
@@ -247,11 +251,11 @@ class Podcast(object):
                                                             latest_file))
         return latest_file
 
-    def set_latest(self, url):
+    def set_latest(self, filepath):
         try:
             if os.path.exists(self._latest_file):
                 os.unlink(self._latest_file)
-            os.symlink(posixpath.basename(url), self._latest_file)
+            os.symlink(filepath, self._latest_file)
         except Exception as err:
             raise MarrieError('Failed to create the .latest symlink: %s' % \
                               str(err))
@@ -360,10 +364,10 @@ class Cli(object):
             count = 1
             for url in self.podcast.list_chapters():
                 if isinstance(url, str):
-                    print('    %i: %s' % (count, posixpath.basename(url)))
+                    print('    %i: %s' % (count, url_to_filename(url)))
                 else:
                     print('    %i: %s (%s)' % (count,
-                                               posixpath.basename(url[0]),
+                                               url_to_filename(url[0]),
                                                url[1]))
                 count += 1
             if count == 1:
