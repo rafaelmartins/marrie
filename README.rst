@@ -1,3 +1,8 @@
+<!-- github-to-forgejo:notice:start -->
+> [!IMPORTANT]
+> This repository has moved to [https://git.rafaelmartins.com/historical/marrie](https://git.rafaelmartins.com/historical/marrie). No further development is planned.
+<!-- github-to-forgejo:notice:end -->
+
 marrie
 ======
 
